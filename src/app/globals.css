@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg-cream: #f2ede8;
+  --color-text-brown: #5c4033;
+  --color-accent-tan: #b49a7e;
+  --color-border-tan: #ddd5ca;
+  --color-accent-gold: #a8865e;
+  --color-text-light: #9a8070;
+  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-montserrat);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--color-bg-cream);
+  color: var(--color-text-brown);
+  font-family: var(--font-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif), serif;
+}
+
+.font-serif {
+  font-family: var(--font-serif), serif;
+}
+
+.font-sans {
+  font-family: var(--font-sans), sans-serif;
+}
+
+/* Hide scrollbars on tab nav */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes bounceDown {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
+}
+
+.animate-bounce-down {
+  animation: bounceDown 2s infinite ease-in-out;
+}
+
+/* Tactile Paper Menu Sheet styling */
+.paper-sheet {
+  background-color: var(--color-bg-cream);
+  border-radius: 32px 32px 0 0;
+  box-shadow: 0 -24px 50px rgba(45, 30, 20, 0.28);
+  position: relative;
+  margin-top: -36px;
+  z-index: 10;
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
+.paper-drag-handle {
+  width: 48px;
+  height: 5px;
+  background-color: #d6ccbd;
+  border-radius: 3px;
+  margin: 16px auto 4px;
+}
+
+.portada-content {
+  transition: transform 0.35s ease-out, opacity 0.35s ease-out;
+  will-change: transform, opacity;
+}
+
+
+
