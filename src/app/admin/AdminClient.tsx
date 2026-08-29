@@ -540,7 +540,8 @@ export default function AdminClient() {
     setIsMounted(true);
   }, []);
 
-  const { categories, addItem, updateItem, deleteItem, addCategory, resetMenu } = useMenu();
+  const { categories, addItem, updateItem, deleteItem, addCategory, resetMenu, saveToServer, isSaving, lastSaved } = useMenu();
+  const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "ok" | "error">("idle");
   const [activeTab, setActiveTab] = useState(categories[0]?.id ?? "");
   const [newCategoryName, setNewCategoryName] = useState("");
 
@@ -622,6 +623,18 @@ export default function AdminClient() {
     setActiveTab(id);
   };
 
+  const handlePublish = async () => {
+    setPublishStatus("saving");
+    try {
+      await saveToServer(categories);
+      setPublishStatus("ok");
+      setTimeout(() => setPublishStatus("idle"), 3000);
+    } catch {
+      setPublishStatus("error");
+      setTimeout(() => setPublishStatus("idle"), 4000);
+    }
+  };
+
   /* ─── RENDER ─── */
   return (
     <LoginGate>
@@ -630,9 +643,46 @@ export default function AdminClient() {
       <header style={s.header}>
         <div>
           <div style={s.headerTitle}>La Serafina — Panel de Administración</div>
-          <div style={s.headerSub}>Gestiona categorías y productos de la carta</div>
+          <div style={s.headerSub}>
+            Gestiona categorías y productos de la carta
+            {lastSaved && (
+              <span style={{ marginLeft: "12px", opacity: 0.7 }}>
+                · Publicado: {lastSaved.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* Publish button */}
+          <button
+            onClick={handlePublish}
+            disabled={isSaving || publishStatus === "saving"}
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: isSaving ? "wait" : "pointer",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 18px",
+              background: publishStatus === "ok"
+                ? "#2e7d52"
+                : publishStatus === "error"
+                ? "#b03030"
+                : "#f0c060",
+              color: publishStatus === "ok" || publishStatus === "error" ? "#fff" : "#3a2a20",
+              fontFamily: "inherit",
+              transition: "background 0.3s",
+              opacity: isSaving ? 0.7 : 1,
+            }}
+          >
+            {publishStatus === "saving" || isSaving
+              ? "Publicando..."
+              : publishStatus === "ok"
+              ? "✓ Publicado"
+              : publishStatus === "error"
+              ? "✗ Error — reintentá"
+              : "☁ Publicar carta"}
+          </button>
           <a
             href="/menu"
             style={{

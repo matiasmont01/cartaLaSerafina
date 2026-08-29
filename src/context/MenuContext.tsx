@@ -43,9 +43,12 @@ interface MenuContextProps {
   updateItem: (categoryId: string, itemId: string, item: MenuItem) => void;
   deleteItem: (categoryId: string, itemId: string) => void;
   resetMenu: () => void;
+  saveToServer: (data: MenuCategory[]) => Promise<void>;
+  isSaving: boolean;
+  lastSaved: Date | null;
 }
 
-const initialData: MenuCategory[] = [
+export const initialData: MenuCategory[] = [
   {
     id: "cat-cafe",
     name: "CAFÉ",
@@ -150,27 +153,55 @@ const initialData: MenuCategory[] = [
   },
 ];
 
+// ─── Secret para la API (debe coincidir con MENU_API_SECRET en Netlify) ───────
+const API_SECRET = process.env.NEXT_PUBLIC_MENU_API_SECRET ?? "la_serafina_secret_2026";
+
 const MenuContext = createContext<MenuContextProps | undefined>(undefined);
 
 export const MenuProvider = ({ children }: { children: ReactNode }) => {
   const [categories, setCategories] = useState<MenuCategory[]>(initialData);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // Load from localStorage on client mount
+  // ── Carga inicial: primero intenta el servidor, fallback a localStorage ──
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("la_serafina_menu_data");
-      if (saved) {
-        setCategories(JSON.parse(saved));
+    async function loadMenu() {
+      try {
+        // 1. Intentar cargar del servidor (fuente de verdad)
+        const res = await fetch("/api/menu", { cache: "no-store" });
+        if (res.ok) {
+          const serverData = await res.json();
+          if (Array.isArray(serverData) && serverData.length > 0) {
+            setCategories(serverData);
+            // Actualizar localStorage como cache
+            localStorage.setItem("la_serafina_menu_data", JSON.stringify(serverData));
+            setIsLoaded(true);
+            return;
+          }
+        }
+      } catch {
+        // Si falla la red, usar localStorage como fallback
+        console.warn("[MenuContext] No se pudo conectar al servidor, usando caché local.");
       }
-    } catch (e) {
-      console.error("Error reading localStorage:", e);
-    } finally {
-      setIsLoaded(true);
+
+      // 2. Fallback: localStorage
+      try {
+        const saved = localStorage.getItem("la_serafina_menu_data");
+        if (saved) {
+          setCategories(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error("Error reading localStorage:", e);
+      } finally {
+        setIsLoaded(true);
+      }
     }
+
+    loadMenu();
   }, []);
 
-  // Save to localStorage on change
+  // ── Guarda en localStorage como cache cuando cambian los datos ────────────
   useEffect(() => {
     if (!isLoaded) return;
     try {
@@ -180,7 +211,7 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [categories, isLoaded]);
 
-  // Sync across tabs/windows in real time
+  // ── Sincroniza entre pestañas en tiempo real ──────────────────────────────
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "la_serafina_menu_data" && e.newValue) {
@@ -194,6 +225,28 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
+
+  // ── Guarda en el servidor (llamado explícitamente desde el Admin) ─────────
+  const saveToServer = async (data: MenuCategory[]) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/menu", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-secret": API_SECRET,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setLastSaved(new Date());
+    } catch (err) {
+      console.error("[MenuContext] Error al guardar en servidor:", err);
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const addCategory = (category: MenuCategory) =>
     setCategories((prev) => [...prev, category]);
@@ -268,6 +321,9 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
         updateItem,
         deleteItem,
         resetMenu,
+        saveToServer,
+        isSaving,
+        lastSaved,
       }}
     >
       {children}
